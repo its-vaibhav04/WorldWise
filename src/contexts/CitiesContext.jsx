@@ -119,13 +119,6 @@ function CitiesProvider({ children }) {
 
       dispatch({ type: "city/created", payload: cityWithId });
 
-      setTimeout(() => {
-        console.log(
-          "Confirming localStorage save:",
-          localStorage.getItem("cities")
-        );
-      }, 100);
-
       return cityWithId;
     } catch (err) {
       console.error("Error creating city:", err);
