@@ -10,7 +10,6 @@ import {
 
 const CitiesContext = createContext();
 
-// Initialize state from localStorage if available
 const loadInitialState = () => {
   try {
     const storedCities = localStorage.getItem("cities");
@@ -48,7 +47,6 @@ function reducer(state, action) {
         currentCity: action.payload,
       };
     case "city/created":
-      // Create a new array to ensure state change is detected
       // eslint-disable-next-line no-case-declarations
       const updatedCities = [...state.cities, action.payload];
       return {
@@ -82,7 +80,6 @@ function CitiesProvider({ children }) {
     loadInitialState
   );
 
-  // Save cities to localStorage whenever they change
   useEffect(() => {
     try {
       console.log("Saving cities to localStorage:", cities);
@@ -116,15 +113,13 @@ function CitiesProvider({ children }) {
     dispatch({ type: "loading" });
 
     try {
-      // Create city with unique ID
       const cityWithId = {
         ...newCity,
-        id: String(new Date().getTime()), // Use timestamp as ID
+        id: String(new Date().getTime()),
       };
 
       dispatch({ type: "city/created", payload: cityWithId });
 
-      // Double-check localStorage save
       setTimeout(() => {
         console.log(
           "Confirming localStorage save:",
