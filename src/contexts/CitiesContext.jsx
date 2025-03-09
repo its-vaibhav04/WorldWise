@@ -82,7 +82,6 @@ function CitiesProvider({ children }) {
 
   useEffect(() => {
     try {
-      console.log("Saving cities to localStorage:", cities);
       localStorage.setItem("cities", JSON.stringify(cities));
     } catch (error) {
       console.error("Error saving to localStorage:", error);
