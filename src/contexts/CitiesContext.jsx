@@ -1,38 +1,62 @@
-/* eslint-disable no-unused-vars */
-import { createContext, useEffect, useContext, useReducer } from "react";
+/* eslint-disable react-refresh/only-export-components */
+/* eslint-disable react/prop-types */
+import {
+  createContext,
+  useContext,
+  useReducer,
+  useEffect,
+  useCallback,
+} from "react";
 
 const CitiesContext = createContext();
 
-const initialState = {
-  cities: [],
-  isLoading: false,
-  currentCity: {},
-  error: "",
+// Initialize state from localStorage if available
+const loadInitialState = () => {
+  try {
+    const storedCities = localStorage.getItem("cities");
+    return {
+      cities: storedCities ? JSON.parse(storedCities) : [],
+      isLoading: false,
+      currentCity: {},
+      error: "",
+    };
+  } catch (error) {
+    console.error("Error loading from localStorage:", error);
+    return {
+      cities: [],
+      isLoading: false,
+      currentCity: {},
+      error: "",
+    };
+  }
 };
 
 function reducer(state, action) {
   switch (action.type) {
     case "loading":
       return { ...state, isLoading: true };
-
     case "cities/loaded":
       return {
         ...state,
         isLoading: false,
         cities: action.payload,
       };
-
     case "city/loaded":
-      return { ...state, isLoading: false, currentCity: action.payload };
-
-    case "city/created":
       return {
         ...state,
         isLoading: false,
-        cities: [...state.cities, action.payload],
         currentCity: action.payload,
       };
-
+    case "city/created":
+      // Create a new array to ensure state change is detected
+      // eslint-disable-next-line no-case-declarations
+      const updatedCities = [...state.cities, action.payload];
+      return {
+        ...state,
+        isLoading: false,
+        cities: updatedCities,
+        currentCity: action.payload,
+      };
     case "city/deleted":
       return {
         ...state,
@@ -40,93 +64,94 @@ function reducer(state, action) {
         cities: state.cities.filter((city) => city.id !== action.payload),
         currentCity: {},
       };
-
     case "rejected":
-      return { ...state, isLoading: false, error: action.payload };
-
+      return {
+        ...state,
+        isLoading: false,
+        error: action.payload,
+      };
     default:
-      throw new Error("Unknown Action Type");
+      throw new Error("Unknown action type");
   }
 }
 
-// eslint-disable-next-line react/prop-types
 function CitiesProvider({ children }) {
-  const [{ cities, isLoading, currentCity }, dispatch] = useReducer(
+  const [{ cities, isLoading, currentCity, error }, dispatch] = useReducer(
     reducer,
-    initialState
+    null,
+    loadInitialState
   );
 
-  // const [cities, setCities] = useState([]);
-  // const [isLoading, setIsLoading] = useState(false);
-  // const [currentCity, setCurrentCity] = useState({});
+  // Save cities to localStorage whenever they change
+  useEffect(() => {
+    try {
+      console.log("Saving cities to localStorage:", cities);
+      localStorage.setItem("cities", JSON.stringify(cities));
+    } catch (error) {
+      console.error("Error saving to localStorage:", error);
+    }
+  }, [cities]);
 
-  useEffect(function () {
-    async function fetchCities() {
+  const getCity = useCallback(
+    function getCity(id) {
+      if (id === currentCity.id) return;
+
       dispatch({ type: "loading" });
+
       try {
-        const res = await fetch("http://localhost:6969/cities");
-        const data = await res.json();
-        dispatch({ type: "cities/loaded", payload: data });
-      } catch (err) {
+        const city = cities.find((city) => String(city.id) === String(id));
+        if (city) dispatch({ type: "city/loaded", payload: city });
+        else throw new Error("City not found");
+      } catch {
         dispatch({
           type: "rejected",
-          payload: "There was an error loading cities",
+          payload: "Could not find city",
         });
       }
-    }
+    },
+    [currentCity.id, cities]
+  );
 
-    fetchCities();
-  }, []);
-
-  async function getCity(id) {
-    if (Number(id) == currentCity.id) return;
-
+  function createCity(newCity) {
     dispatch({ type: "loading" });
+
     try {
-      const res = await fetch(`http://localhost:6969/cities/${id}`);
-      const data = await res.json();
-      dispatch({ type: "city/loaded", payload: data });
+      // Create city with unique ID
+      const cityWithId = {
+        ...newCity,
+        id: String(new Date().getTime()), // Use timestamp as ID
+      };
+
+      dispatch({ type: "city/created", payload: cityWithId });
+
+      // Double-check localStorage save
+      setTimeout(() => {
+        console.log(
+          "Confirming localStorage save:",
+          localStorage.getItem("cities")
+        );
+      }, 100);
+
+      return cityWithId;
     } catch (err) {
+      console.error("Error creating city:", err);
       dispatch({
         type: "rejected",
-        payload: "There was an error loading the city",
+        payload: "There was an error creating the city.",
       });
     }
   }
 
-  async function createCity(newCity) {
+  function deleteCity(id) {
     dispatch({ type: "loading" });
+
     try {
-      const res = await fetch(`http://localhost:6969/cities`, {
-        method: "POST",
-        body: JSON.stringify(newCity),
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      const data = await res.json();
-
-      dispatch({ type: "city/created", payload: data });
-    } catch (err) {
-      dispatch({
-        type: "rejected",
-        payload: "There was an error creating city",
-      });
-    }
-  }
-
-  async function deleteCity(id) {
-    dispatch({ type: "loading" });
-    try {
-      await fetch(`http://localhost:6969/cities/${id}`, {
-        method: "DELETE",
-      });
-
       dispatch({ type: "city/deleted", payload: id });
     } catch (err) {
+      console.error("Error deleting city:", err);
       dispatch({
         type: "rejected",
-        payload: "There was an error deleting city",
+        payload: "There was an error deleting the city.",
       });
     }
   }
@@ -137,6 +162,7 @@ function CitiesProvider({ children }) {
         cities,
         isLoading,
         currentCity,
+        error,
         getCity,
         createCity,
         deleteCity,
@@ -149,9 +175,9 @@ function CitiesProvider({ children }) {
 
 function useCities() {
   const context = useContext(CitiesContext);
-  if (context === undefined) throw new Error("Cannot access context here!!");
+  if (context === undefined)
+    throw new Error("CitiesContext used outside of CitiesProvider");
   return context;
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export { CitiesProvider, useCities };

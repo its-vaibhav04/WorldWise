@@ -97,7 +97,7 @@ function Form() {
   return (
     <form
       className={`${styles.form} ${isLoading ? styles.loading : ""}`}
-      onClick={handleSubmit}
+      onSubmit={handleSubmit}
     >
       <div className={styles.row}>
         <label htmlFor="cityName">City name</label>
